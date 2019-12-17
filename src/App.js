@@ -2,8 +2,21 @@ import React from 'react'
 import { useFormState } from 'react-use-form-state'
 
 // UTILITIES
+const RESET_EVENT = 'form-reset-event'
+
+function resetEvent() {
+  window.dispatchEvent(
+    new CustomEvent(RESET_EVENT)
+  )
+}
+
+function listen(listener) {
+  window.addEventListener(RESET_EVENT, listener, false)
+  return () => window.removeEventListener(RESET_EVENT, listener)
+}
+
 function timeout(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 // ITEM
@@ -21,15 +34,21 @@ function ShowHideItem({children}) {
 function Item({ handleUpdate, id, itemsFormStateRef, title}) {
   console.log(`Item ${id} Render`)
   
-  const [formState, { number }] = useFormState(itemsFormStateRef.current[id], {
+  const [{values, reset}, { number }] = useFormState(itemsFormStateRef.current[id], {
     onChange: (e, stateValues, nextStateValues) => handleUpdate(id, nextStateValues)
   })
+
+  // Listen for a window event to reset our form state. This is only really relevant if
+  // the form is actively rendered on the screen when the ref is cleared in the parent.
+  React.useEffect(() => {
+    return listen(reset)
+  }, [reset])
 
   return (
     <form>
       <h4>{title}</h4>
       <input {...number('qty')} />
-      <button type='button' onClick={() => console.log(`Handle Single Add`, formState)}>Add</button>
+      <button type='button' onClick={() => console.log(`Handle Single Add`, values)}>Add</button>
     </form>
   )
 }
@@ -74,17 +93,17 @@ function Provider({children}) {
     }
   }, [])
 
+  // Display current overall form state at any point in time.
   function showRef() {
     console.log('Current Form State', itemsFormStateRef.current)
   }
 
+  // Show the current overall form state, reset that state to defaults, and
+  // trigger a reset event for any forms that might be open.
   function showAndReset() {
     showRef()
-    // @HACK We want to trigger a re-render as that's the easiest way to clear out
-    // both the form state for items as well as the ref state.
-    const newItems = [...items]
-    setItems(newItems)
-    resetFormStateRef(newItems)
+    resetFormStateRef(items)
+    resetEvent()
   }
 
   // Given an updated form state for an item we update that item in our ref.
