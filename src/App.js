@@ -7,21 +7,30 @@ function timeout(ms) {
 }
 
 // ITEM
-function Item({handleUpdate, id, initialState, title}) {
-  console.log(`Item ${id} Render`)
+function ShowHideItem({children}) {
+  const [toggle, setToggle] = React.useState(false)
 
-  const [formState, { number }] = useFormState(initialState, {
+  return (
+    <li>
+      <button type='button' onClick={() => setToggle(!toggle)}>{toggle ? 'Hide' : 'Show'}</button>
+      {toggle && children}
+    </li>
+  )
+}
+
+function Item({ handleUpdate, id, itemsFormStateRef, title}) {
+  console.log(`Item ${id} Render`)
+  
+  const [formState, { number }] = useFormState(itemsFormStateRef.current[id], {
     onChange: (e, stateValues, nextStateValues) => handleUpdate(id, nextStateValues)
   })
 
   return (
-    <li>
-      <form>
-        <h4>{title}</h4>
-        <input {...number('qty')} />
-        <button type='button' onClick={() => console.log(`Handle Single Add`, formState)}>Add</button>
-      </form>
-    </li>
+    <form>
+      <h4>{title}</h4>
+      <input {...number('qty')} />
+      <button type='button' onClick={() => console.log(`Handle Single Add`, formState)}>Add</button>
+    </form>
   )
 }
 
@@ -100,7 +109,12 @@ function List() {
     <>
       <button onClick={showRef}>Show Ref State</button>
       <ul>
-        {items.map(i => <Item {...i} key={i.id} handleUpdate={updateFormStateRef} initialState={itemsFormStateRef.current[i.id]} />)}
+        {items.map(i => (
+          <ShowHideItem key={i.id}>
+            {/* @NOTE Must pass in the whole ref in order to access initialState value for the form when mounted. */}
+            <Item {...i} handleUpdate={updateFormStateRef} itemsFormStateRef={itemsFormStateRef} />
+          </ShowHideItem>
+        ))}
       </ul>
     </>
   )
