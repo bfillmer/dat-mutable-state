@@ -61,10 +61,6 @@ function Provider({children}) {
   const [items, setItems] = React.useState([])
   const itemsFormStateRef = React.useRef({})
 
-  function showRef () {
-    console.log('Current Form State', itemsFormStateRef.current)
-  }
-
   // Setup our formStateRef based on new item data.
   const resetFormStateRef = React.useCallback((newItems) => {
     itemsFormStateRef.current = {}
@@ -77,6 +73,19 @@ function Provider({children}) {
       })
     }
   }, [])
+
+  function showRef() {
+    console.log('Current Form State', itemsFormStateRef.current)
+  }
+
+  function showAndReset() {
+    showRef()
+    // @HACK We want to trigger a re-render as that's the easiest way to clear out
+    // both the form state for items as well as the ref state.
+    const newItems = [...items]
+    setItems(newItems)
+    resetFormStateRef(newItems)
+  }
 
   // Given an updated form state for an item we update that item in our ref.
   const updateFormStateRef = React.useCallback((id, state) => {
@@ -95,7 +104,7 @@ function Provider({children}) {
   }, [resetFormStateRef])
   
   return (
-    <ItemContext.Provider value={{ items, itemsFormStateRef, showRef, updateFormStateRef }}>
+    <ItemContext.Provider value={{ items, itemsFormStateRef, showAndReset, showRef, updateFormStateRef }}>
       {(items.length > 0) && children}
     </ItemContext.Provider>
   )
@@ -103,11 +112,12 @@ function Provider({children}) {
 
 // COMPOSITION
 function List() {
-  const { items, itemsFormStateRef, showRef, updateFormStateRef} = React.useContext(ItemContext)
+  const { items, itemsFormStateRef, showAndReset, showRef, updateFormStateRef} = React.useContext(ItemContext)
 
   return (
     <>
       <button onClick={showRef}>Show Ref State</button>
+      <button onClick={showAndReset}>Show Ref and Reset</button>
       <ul>
         {items.map(i => (
           <ShowHideItem key={i.id}>
