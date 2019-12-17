@@ -2,6 +2,8 @@ import React from 'react'
 import { useFormState } from 'react-use-form-state'
 
 // UTILITIES
+// Create an event listener pattern to use to forcibly reset form states for
+// children that won't be re-rendered when we want to reset our overall formState.
 const RESET_EVENT = 'form-reset-event'
 
 function resetEvent() {
@@ -19,6 +21,12 @@ function timeout(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// Shape of the form data we want to maintain per item. If Josh had his way this would
+// be TypeScript and a pretty data type. He's not wrong.
+const initialItemState = {
+  qty: ''
+}
+
 // ITEM
 function ShowHideItem({children}) {
   const [toggle, setToggle] = React.useState(false)
@@ -34,9 +42,17 @@ function ShowHideItem({children}) {
 function Item({ handleUpdate, id, itemsFormStateRef, title}) {
   console.log(`Item ${id} Render`)
   
+  // Update our ref state on change.
   const [{values, reset}, { number }] = useFormState(itemsFormStateRef.current[id], {
     onChange: (e, stateValues, nextStateValues) => handleUpdate(id, nextStateValues)
   })
+
+  // Do something with the individual value and ensure our ref state matches.
+  function handleAdd (e) {
+    console.log(`Handle Single Add`, values)
+    reset()
+    handleUpdate(id, initialItemState)
+  }
 
   // Listen for a window event to reset our form state. This is only really relevant if
   // the form is actively rendered on the screen when the ref is cleared in the parent.
@@ -48,7 +64,7 @@ function Item({ handleUpdate, id, itemsFormStateRef, title}) {
     <form>
       <h4>{title}</h4>
       <input {...number('qty')} />
-      <button type='button' onClick={() => console.log(`Handle Single Add`, values)}>Add</button>
+      <button type='button' onClick={handleAdd}>Add</button>
     </form>
   )
 }
@@ -65,12 +81,6 @@ async function getItems() {
   ]
 
   return items
-}
-
-// Shape of the form data we want to maintain per item. If Josh had his way this would
-// be TypeScript and a pretty data type. He's not wrong.
-const initialItemState = {
-  qty: ''
 }
 
 const ItemContext = React.createContext([])
@@ -108,7 +118,10 @@ function Provider({children}) {
 
   // Given an updated form state for an item we update that item in our ref.
   const updateFormStateRef = React.useCallback((id, state) => {
-    itemsFormStateRef.current[id] = state
+    itemsFormStateRef.current[id] = {
+      ...itemsFormStateRef.current[id],
+      ...state
+    }
   }, [])
 
   // Would need to rerun processItems when pagination changes the items.
