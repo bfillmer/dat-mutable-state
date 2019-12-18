@@ -5,11 +5,10 @@ import { useFormState } from 'react-use-form-state'
 // Create an event listener pattern to use to forcibly reset form states for
 // children that won't be re-rendered when we want to reset our overall formState.
 const RESET_EVENT = 'form-reset-event'
+const event = new CustomEvent(RESET_EVENT)
 
 function resetEvent() {
-  window.dispatchEvent(
-    new CustomEvent(RESET_EVENT)
-  )
+  window.dispatchEvent(event)
 }
 
 function listen(listener) {
@@ -56,9 +55,7 @@ function Item({ handleUpdate, id, itemsFormStateRef, title}) {
 
   // Listen for a window event to reset our form state. This is only really relevant if
   // the form is actively rendered on the screen when the ref is cleared in the parent.
-  React.useEffect(() => {
-    return listen(reset)
-  }, [reset])
+  React.useEffect(() => listen(reset), [reset])
 
   return (
     <form>
