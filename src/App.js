@@ -44,6 +44,8 @@ function Item({ handleUpdate, id, itemsFormStateRef, resetKey, title}) {
   // Listen for a window event to reset our form state. This is only really relevant if
   // the form is actively rendered on the screen when the ref is cleared in the parent.
   React.useEffect(() => {
+    // Failsafe in case somehow reset changes, which I don't think is possible but it's
+    // not my library either.
     if (prevResetKey.current !== resetKey) {
       reset()
     }
