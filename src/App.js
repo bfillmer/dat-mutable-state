@@ -1,32 +1,19 @@
 import React from 'react'
+import shortid from 'shortid'
 import { useFormState } from 'react-use-form-state'
 
-// UTILITIES
-// Create an event listener pattern to use to forcibly reset form states for
-// children that won't be re-rendered when we want to reset our overall formState.
-const RESET_EVENT = 'form-reset-event'
-const event = new CustomEvent(RESET_EVENT)
-
-function resetEvent() {
-  window.dispatchEvent(event)
-}
-
-function listen(listener) {
-  window.addEventListener(RESET_EVENT, listener, false)
-  return () => window.removeEventListener(RESET_EVENT, listener)
-}
-
+// I. UTILITIES
 function timeout(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// II. ITEM
 // Shape of the form data we want to maintain per item. If Josh had his way this would
 // be TypeScript and a pretty data type. He's not wrong.
 const initialItemState = {
   qty: ''
 }
 
-// ITEM
 function ShowHideItem({children}) {
   const [toggle, setToggle] = React.useState(false)
 
@@ -38,8 +25,9 @@ function ShowHideItem({children}) {
   )
 }
 
-function Item({ handleUpdate, id, itemsFormStateRef, title}) {
+function Item({ handleUpdate, id, itemsFormStateRef, resetKey, title}) {
   console.log(`Item ${id} Render`)
+  const prevResetKey = React.useRef(resetKey)
   
   // Update our ref state on change.
   const [{values, reset}, { number }] = useFormState(itemsFormStateRef.current[id], {
@@ -55,7 +43,12 @@ function Item({ handleUpdate, id, itemsFormStateRef, title}) {
 
   // Listen for a window event to reset our form state. This is only really relevant if
   // the form is actively rendered on the screen when the ref is cleared in the parent.
-  React.useEffect(() => listen(reset), [reset])
+  React.useEffect(() => {
+    if (prevResetKey.current !== resetKey) {
+      reset()
+    }
+    prevResetKey.current = resetKey
+  }, [reset, resetKey])
 
   return (
     <form>
@@ -66,8 +59,7 @@ function Item({ handleUpdate, id, itemsFormStateRef, title}) {
   )
 }
 
-// PROVIDER
-
+// III. PROVIDER
 // Simulate API call for data.
 async function getItems() {
   await timeout(500)
@@ -85,6 +77,7 @@ const ItemContext = React.createContext([])
 function Provider({children}) {
   console.log(`Provider Render`)
   const [items, setItems] = React.useState([])
+  const [resetKey, setResetKey] = React.useState(shortid.generate())
   const itemsFormStateRef = React.useRef({})
 
   // Setup our formStateRef based on new item data.
@@ -110,7 +103,7 @@ function Provider({children}) {
   function showAndReset() {
     showRef()
     resetFormStateRef(items)
-    resetEvent()
+    setResetKey(shortid.generate())
   }
 
   // Given an updated form state for an item we update that item in our ref.
@@ -133,15 +126,15 @@ function Provider({children}) {
   }, [resetFormStateRef])
   
   return (
-    <ItemContext.Provider value={{ items, itemsFormStateRef, showAndReset, showRef, updateFormStateRef }}>
+    <ItemContext.Provider value={{ items, itemsFormStateRef, resetKey, showAndReset, showRef, updateFormStateRef }}>
       {(items.length > 0) && children}
     </ItemContext.Provider>
   )
 }
 
-// COMPOSITION
+// IV. COMPOSITION
 function List() {
-  const { items, itemsFormStateRef, showAndReset, showRef, updateFormStateRef} = React.useContext(ItemContext)
+  const { items, itemsFormStateRef, resetKey, showAndReset, showRef, updateFormStateRef} = React.useContext(ItemContext)
 
   return (
     <>
@@ -151,7 +144,7 @@ function List() {
         {items.map(i => (
           <ShowHideItem key={i.id}>
             {/* @NOTE Must pass in the whole ref in order to access initialState value for the form when mounted. */}
-            <Item {...i} handleUpdate={updateFormStateRef} itemsFormStateRef={itemsFormStateRef} />
+            <Item {...i} handleUpdate={updateFormStateRef} itemsFormStateRef={itemsFormStateRef} resetKey={resetKey} />
           </ShowHideItem>
         ))}
       </ul>
